@@ -30,14 +30,17 @@ export class ContactPreferenceUnsubscribeUseCase extends BaseUseCase<{ organizat
     const existing = await ContactPreferenceModel.findOne({
       where: { organization_id, normalized_email: email, deleted_at: null },
     });
+    let preferenceUuid: string;
     if (existing) {
       if (existing.status === "opted_out" || existing.status === "suppressed") {
         return { unsubscribed: true, already: true };
       }
+      preferenceUuid = existing.uuid;
       await existing.update({ status: "opted_out", unsubscribed_at: new Date(), updated_at: new Date() });
     } else {
+      preferenceUuid = randomUUID();
       await ContactPreferenceModel.create({
-        uuid: randomUUID(),
+        uuid: preferenceUuid,
         organization_id,
         normalized_email: email,
         status: "opted_out",
@@ -58,7 +61,7 @@ export class ContactPreferenceUnsubscribeUseCase extends BaseUseCase<{ organizat
       actor: null,
       operation: "update",
       entity: "marketing_contact_preference",
-      entity_uuid: email,
+      entity_uuid: preferenceUuid,
       origin: null,
       updated: { normalized_email: email, status: "opted_out" } as unknown as Record<string, unknown>,
     });

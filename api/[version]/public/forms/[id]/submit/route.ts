@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDatabase } from "@/database/sequelize";
 import { FormSubmitUseCase, type FormSubmitInput } from "@/app/marketing/useCases/form/FormSubmitUseCase";
 import { checkRateLimit, clientIp } from "@/app/marketing/libraries/rateLimit";
+import { readVisitorId } from "@/app/marketing/libraries/publicTokens";
 
 export const runtime = "nodejs";
 
@@ -34,8 +35,10 @@ export async function POST(
     }
 
     // Visitor association is cookie-optional; the body value is advisory.
+    // A signed token is decoded to its short id before being stored.
     const visitorCookie = request.cookies.get("marketing_visitor")?.value ?? null;
-    const visitorId = payload.visitor_id ?? visitorCookie ?? undefined;
+    const candidate = payload.visitor_id ?? visitorCookie ?? undefined;
+    const visitorId = candidate !== undefined ? (readVisitorId(candidate) ?? candidate) : undefined;
 
     await connectDatabase();
     const result = await new FormSubmitUseCase().exec(id, {
